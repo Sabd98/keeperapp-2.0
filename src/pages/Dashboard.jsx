@@ -19,7 +19,7 @@ import {
   deleteChecklist,
   fetchChecklists,
 } from "../store/features/checklistSlice";
-import { fetchChecklistItems } from "../store/features/checklistItemSlice";
+import { fetchChecklistItems, initializeItemsForChecklist } from "../store/features/checklistItemSlice";
 
 
 export default function Dashboard() {
@@ -66,7 +66,18 @@ export default function Dashboard() {
   const handleCreate = () => {
     const name = prompt("Enter checklist name:");
     if (name) {
-      dispatch(createChecklist({ name }));
+      dispatch(createChecklist({ name }))
+        .unwrap()
+        .then((newChecklist) => {
+          // Inisialisasi state untuk checklist baru
+          dispatch(initializeItemsForChecklist(newChecklist.id));
+          // Refresh data setelah berhasil membuat
+          dispatch(fetchChecklists());
+        })
+        .catch((error) => {
+          console.error("Create failed:", error);
+          alert("Failed to create checklist");
+        });
     }
   };
 
@@ -153,7 +164,6 @@ export default function Dashboard() {
                                     ? "line-through text-gray-500"
                                     : ""
                                 }
-                                primaryTypographyProps={{ variant: "body2" }}
                               />
                             </ListItem>
                           ))}
@@ -161,7 +171,6 @@ export default function Dashboard() {
                             <ListItem className="py-0 px-0 text-gray-500">
                               <ListItemText
                                 primary={`+${itemCount - 2} more...`}
-                                primaryTypographyProps={{ variant: "body2" }}
                               />
                             </ListItem>
                           )}

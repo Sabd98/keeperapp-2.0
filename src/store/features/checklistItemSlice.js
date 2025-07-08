@@ -8,24 +8,11 @@ export const fetchChecklistItems = createAsyncThunk(
       const response = await axiosInstance.get(
         `/checklist/${checklistId}/item`
       );
-
-      // Debug: Tampilkan struktur respons lengkap
-      console.log("Fetch checklist items response:", response.data);
-
-      // Pastikan kita selalu mengembalikan array
-      if (Array.isArray(response.data)) {
-        return response.data;
-      } else if (Array.isArray(response.data.data)) {
-        return response.data.data; // Jika data ada di properti data
-      } else if (Array.isArray(response.data.items)) {
-        return response.data.items; // Jika data ada di properti items
-      } else {
-        console.error("Unexpected response structure:", response.data);
-        return []; // Kembalikan array kosong
-      }
+      return response.data.data || response.data || [];
     } catch (error) {
-      console.error("Fetch checklist items error:", error);
-      return rejectWithValue(error.response?.data);
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch items"
+      );
     }
   }
 );
@@ -36,28 +23,39 @@ export const createChecklistItem = createAsyncThunk(
     try {
       const response = await axiosInstance.post(
         `/checklist/${checklistId}/item`,
-        data
+        { itemName: data.itemName }
       );
 
-      // Pastikan kita mengembalikan item yang lengkap
+      // Return item yang konsisten dengan struktur
       return {
-        id: response.data.id || Date.now(), // ID sementara jika belum ada
-        name: data.itemName,
-        status: false, // Default status
+        checklistId,
+        item: {
+          id: response.data.data?.id || response.data.id || Date.now(),
+          name: data.itemName,
+          status: false,
+        },
       };
     } catch (error) {
-      return rejectWithValue(error.response?.data);
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create item"
+      );
     }
   }
 );
 
 export const updateChecklistItemStatus = createAsyncThunk(
   "checklistItems/updateStatus",
-  async ({ checklistId, itemId, status }) => {
-    await axiosInstance.put(`/checklist/${checklistId}/item/${itemId}`, {
-      status,
-    });
-    return { itemId, status };
+  async ({ checklistId, itemId, status }, { rejectWithValue }) => {
+    try {
+      await axiosInstance.put(`/checklist/${checklistId}/item/${itemId}`, {
+        status: status,
+      });
+      return { checklistId, itemId, status };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update status"
+      );
+    }
   }
 );
 
@@ -67,83 +65,121 @@ export const updateChecklistItemName = createAsyncThunk(
     try {
       await axiosInstance.put(
         `/checklist/${checklistId}/item/rename/${itemId}`,
-        data
+        { itemName: data.itemName }
       );
-
-      // Kembalikan data yang diperlukan untuk update
-      return {
-        itemId,
-        name: data.itemName,
-      };
+      return { checklistId, itemId, name: data.itemName };
     } catch (error) {
-      return rejectWithValue(error.response?.data);
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to update name"
+      );
     }
   }
 );
 
 export const deleteChecklistItem = createAsyncThunk(
   "checklistItems/delete",
-  async ({ checklistId, itemId }) => {
-    await axiosInstance.delete(`/checklist/${checklistId}/item/${itemId}`);
-    return itemId;
+  async ({ checklistId, itemId }, { rejectWithValue }) => {
+    try {
+      await axiosInstance.delete(`/checklist/${checklistId}/item/${itemId}`);
+      return { checklistId, itemId };
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to delete item"
+      );
+    }
   }
 );
 
 const checklistItemSlice = createSlice({
   name: "checklistItems",
   initialState: {
-    items: [],
+    itemsByChecklistId: {},
+    loadingItems: {},
     status: "idle",
     error: null,
-    itemsByChecklistId: {}, 
-    loadingItems: {}, 
   },
-  reducers: {},
+  reducers: {
+    initializeItemsForChecklist: (state, action) => {
+      const checklistId = action.payload;
+      if (!state.itemsByChecklistId[checklistId]) {
+        state.itemsByChecklistId[checklistId] = [];
+        state.loadingItems[checklistId] = false;
+      }
+    },
+  },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchChecklistItems.pending, (state,action) => {
+      // Fetch Items
+      .addCase(fetchChecklistItems.pending, (state, action) => {
         const checklistId = action.meta.arg;
         state.loadingItems[checklistId] = true;
-        state.status = "loading";
         state.error = null;
       })
       .addCase(fetchChecklistItems.fulfilled, (state, action) => {
         const checklistId = action.meta.arg;
-        state.itemsByChecklistId[checklistId] = action.payload;
         state.loadingItems[checklistId] = false;
-        state.status = "succeeded";
-
-        // Pastikan payload adalah array
-        state.items = Array.isArray(action.payload) ? action.payload : [];
+        state.itemsByChecklistId[checklistId] = Array.isArray(action.payload)
+          ? action.payload
+          : [];
       })
       .addCase(fetchChecklistItems.rejected, (state, action) => {
         const checklistId = action.meta.arg;
         state.loadingItems[checklistId] = false;
-        state.status = "failed";
         state.error = action.payload;
-        state.items = []; 
+      })
+
+      // Create Item
+      .addCase(createChecklistItem.pending, (state) => {
+        state.status = "loading";
       })
       .addCase(createChecklistItem.fulfilled, (state, action) => {
-        state.items.push(action.payload);
+        state.status = "succeeded";
+        const { checklistId, item } = action.payload;
+
+        if (!state.itemsByChecklistId[checklistId]) {
+          state.itemsByChecklistId[checklistId] = [];
+        }
+
+        state.itemsByChecklistId[checklistId].push(item);
       })
+      .addCase(createChecklistItem.rejected, (state, action) => {
+        state.status = "failed";
+        state.error = action.payload;
+      })
+
+      // Update Status
       .addCase(updateChecklistItemStatus.fulfilled, (state, action) => {
-        const item = state.items.find((i) => i.id === action.payload.itemId);
-        if (item) {
-          item.status = action.payload.status;
-        }
-      })
-      .addCase(updateChecklistItemName.fulfilled, (state, action) => {
-        const index = state.items.findIndex(
-          (i) => i.id === action.payload.itemId
-        );
+        const { checklistId, itemId, status } = action.payload;
+        const items = state.itemsByChecklistId[checklistId] || [];
+        const index = items.findIndex((item) => item.id === itemId);
+
         if (index !== -1) {
-          state.items[index].name = action.payload.name;
+          state.itemsByChecklistId[checklistId][index].status = status;
         }
       })
+
+      // Update Name
+      .addCase(updateChecklistItemName.fulfilled, (state, action) => {
+        const { checklistId, itemId, name } = action.payload;
+        const items = state.itemsByChecklistId[checklistId] || [];
+        const index = items.findIndex((item) => item.id === itemId);
+
+        if (index !== -1) {
+          state.itemsByChecklistId[checklistId][index].name = name;
+        }
+      })
+
+      // Delete Item
       .addCase(deleteChecklistItem.fulfilled, (state, action) => {
-        state.items = state.items.filter((item) => item.id !== action.payload);
+        const { checklistId, itemId } = action.payload;
+        if (state.itemsByChecklistId[checklistId]) {
+          state.itemsByChecklistId[checklistId] = state.itemsByChecklistId[
+            checklistId
+          ].filter((item) => item.id !== itemId);
+        }
       });
   },
 });
 
+export const { initializeItemsForChecklist } = checklistItemSlice.actions;
 export default checklistItemSlice.reducer;

@@ -6,16 +6,10 @@ export const fetchChecklists = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get("/checklist");
-
-      // Debug: Tampilkan struktur respons lengkap
       console.log("Fetch checklists response:", response.data);
 
-      // Cek beberapa kemungkinan struktur respons
-      return (
-        response.data.data || // Jika data ada di properti data
-        response.data.items || // Jika data ada di properti items
-        response.data
-      ); // Jika langsung array
+      // Fokus pada properti 'data' jika ada
+      return response.data.data || response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data);
     }
@@ -27,10 +21,11 @@ export const createChecklist = createAsyncThunk(
   async (data, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.post("/checklist", data);
-      // Pastikan response memiliki struktur yang konsisten
+
+      // Pastikan struktur response konsisten
       return {
-        id: response.data.id,
-        name: data.name, // Gunakan nama dari input
+        id: response.data.id || response.data.data?.id,
+        name: data.name,
       };
     } catch (error) {
       return rejectWithValue(error.response?.data);
