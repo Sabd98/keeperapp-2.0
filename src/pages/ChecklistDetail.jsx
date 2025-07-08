@@ -122,12 +122,11 @@ export default function ChecklistDetail() {
         </Button>
       </div>
 
-      <Box className="mb-6 flex items-center">
+      <Box className="mb-6 flex items-center justify-between">
         <TextField
-          fullWidth
           variant="outlined"
           label="New item"
-          size="300px"
+          size="500px"
           value={newItemName}
           onChange={(e) => setNewItemName(e.target.value)}
           onKeyPress={(e) => e.key === "Enter" && handleCreateItem()}
@@ -153,7 +152,7 @@ export default function ChecklistDetail() {
             : "No items in this checklist"}
         </div>
       ) : (
-        <List className="bg-white rounded-lg shadow">
+        <List className="bg-slate-300  rounded-lg shadow-md">
           {items.map((item) => (
             <ListItem
               key={item.id}

@@ -104,7 +104,7 @@ export default function Dashboard() {
           No checklists found. Create your first checklist.
         </div>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={3} >
           {checklists.map((checklist) => {
             const items = getFirstTwoItems(checklist.id);
             const itemCount = checklistItems[checklist.id]?.length || 0;
@@ -112,8 +112,8 @@ export default function Dashboard() {
 
             return (
               <Grid item xs={12} sm={6} md={4} key={checklist.id}>
-                <Card className="h-full flex flex-col">
-                  <CardContent className="flex-grow">
+                <Card className="h-full flex flex-col ">
+                  <CardContent className="flex-grow bg-slate-300">
                     <div className="flex justify-between items-start">
                       <h3
                         className="text-lg font-medium cursor-pointer hover:underline"
@@ -136,9 +136,9 @@ export default function Dashboard() {
                           <CircularProgress size={20} />
                         </div>
                       ) : items.length > 0 ? (
-                        <List dense className="py-0">
+                        <List dense className="py-0 ">
                           {items.map((item) => (
-                            <ListItem key={item.id} className="py-0 px-0">
+                            <ListItem key={item.id} className="py-0 px-0 ">
                               <ListItemIcon className="min-w-0 mr-2">
                                 {item.status ? (
                                   <Check className="text-green-500" size={18} />
@@ -174,10 +174,10 @@ export default function Dashboard() {
                     </div>
                   </CardContent>
 
-                  <div className="p-4">
+                  <div className="p-4 bg-slate-300">
                     <Button
                       fullWidth
-                      variant="outlined"
+                      variant="contained"
                       size="small"
                       onClick={() => navigate(`/checklist/${checklist.id}`)}
                     >
