@@ -136,7 +136,7 @@ export default function Dashboard() {
                         size="small"
                         onClick={() => handleDelete(checklist.id)}
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={18} className="text-red-500" />
                       </IconButton>
                     </div>
 

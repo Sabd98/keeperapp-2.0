@@ -162,13 +162,13 @@ export default function ChecklistDetail() {
           No items in this checklist
         </div>
       ) : (
-        <List className="bg-white rounded-lg shadow">
+        <List className="bg-slate-300 rounded-lg shadow-xl">
           {items.map((item) => (
             <ListItem
               key={item.id}
               secondaryAction={
                 <IconButton onClick={() => handleDeleteItem(item.id)}>
-                  <Trash2 size={18} />
+                  <Trash2 size={18} className="text-red-500" />
                 </IconButton>
               }
             >
